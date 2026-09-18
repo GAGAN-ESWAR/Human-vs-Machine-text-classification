@@ -1,0 +1,8 @@
+__pycache__/
+*.csv
+*.json
+submissions/
+models/
+.venv/
+venv/
+*.pkl
