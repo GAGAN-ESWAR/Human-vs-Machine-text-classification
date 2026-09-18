@@ -25,7 +25,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 from src.data_loader import load_train, load_test, load_sample_submission
-from src.features import TfidfFeatures, StyleFeatures, CombinedFeatures
+from src.features import TfidfFeatures, StyleFeatures, CombinedFeatures, GenerativeCombinedFeatures
 from src.models import (
     make_logreg,
     make_linear_svc,
@@ -62,6 +62,9 @@ def style_factory():
 
 def combined_factory():
     return CombinedFeatures(ngram_range=(1, 3), max_features=150_000, sublinear_tf=True)
+
+def gen_combined_factory():
+    return GenerativeCombinedFeatures(ngram_range=(1, 3), max_features=150_000, sublinear_tf=True)
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +201,29 @@ def main(args):
 
     else:
         print("\n[4/6] Skipping BL3 (--skip-bl3 flag set)")
+
+    # ================================================================
+    # BASELINE 3b — Generative Combined Features + LightGBM
+    # ================================================================
+    print("\n[4b/6] Baseline 3b — Generative Combined Features + LightGBM …")
+    res_bl3b, oof_bl3b = cv_evaluate(
+        model_factory=lambda: make_lgbm(scale_pos_weight=SCALE_POS_WEIGHT),
+        feature_factory=gen_combined_factory,
+        texts=train_texts,
+        y=y_train,
+        verbose=True,
+        model_name="BL3b-Generative",
+    )
+    all_results["BL3b-Generative"] = res_bl3b
+    oof_cols.append(oof_bl3b)
+
+    print("\n  Re-training on full data for test predictions …")
+    test_bl3b = train_and_predict(
+        lambda: make_lgbm(scale_pos_weight=SCALE_POS_WEIGHT),
+        gen_combined_factory, train_texts, y_train, test_texts
+    )
+    test_preds_list.append(test_bl3b)
+    generate_submission(test_ids, test_bl3b, model_name="BL3b-Generative")
 
     # ================================================================
     # BASELINE 4 — OOF Stacking Ensemble

@@ -20,6 +20,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from typing import List
 import zlib
 
+from src.features_generative import GenerativeStyleFeatures
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -242,8 +244,8 @@ class ExtendedStyleFeatures(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, texts: List[List[int]]) -> np.ndarray:
-        base = StyleFeatures().transform(texts)           # (N, 9)
-        ext = np.zeros((len(texts), N_EXTENDED - 9), dtype=np.float32)
+        base = StyleFeatures().transform(texts)
+        ext = np.zeros((len(texts), N_EXTENDED - len(STYLE_FEATURE_NAMES)), dtype=np.float32)
 
         for i, tokens in enumerate(texts):
             arr = np.array(tokens, dtype=np.int32)
@@ -321,4 +323,38 @@ class EnhancedCombinedFeatures(BaseEstimator, TransformerMixin):
         return self.fit(texts, y).transform(texts)
 
 
+# ---------------------------------------------------------------------------
+# 6. Generative combined features (TF-IDF + ExtendedStyle + GenerativeStyle)
+# ---------------------------------------------------------------------------
 
+class GenerativeCombinedFeatures(BaseEstimator, TransformerMixin):
+    """
+    Horizontally stacks sparse TF-IDF, dense ExtendedStyle, and GenerativeStyle features.
+    """
+
+    def __init__(self, ngram_range=(1, 3), max_features=150_000, sublinear_tf=True):
+        self.tfidf = TfidfFeatures(
+            ngram_range=ngram_range,
+            max_features=max_features,
+            sublinear_tf=sublinear_tf,
+        )
+        self.style = ExtendedStyleFeatures()
+        self.gen = GenerativeStyleFeatures(alpha=0.1, use_trigram=True, vocab_size=18438)
+
+    def fit(self, texts: List[List[int]], y=None):
+        self.tfidf.fit(texts)
+        self.style.fit(texts)
+        self.gen.fit(texts, y)
+        return self
+
+    def transform(self, texts: List[List[int]]):
+        tfidf_X = self.tfidf.transform(texts)
+        style_X = self.style.transform(texts)
+        gen_X = self.gen.transform(texts)
+        return sp.hstack([tfidf_X, sp.csr_matrix(style_X), sp.csr_matrix(gen_X)], format="csr")
+
+    def fit_transform(self, texts: List[List[int]], y=None):
+        tfidf_X = self.tfidf.fit_transform(texts, y)
+        style_X = self.style.fit_transform(texts, y)
+        gen_X = self.gen.fit_transform(texts, y)
+        return sp.hstack([tfidf_X, sp.csr_matrix(style_X), sp.csr_matrix(gen_X)], format="csr")
