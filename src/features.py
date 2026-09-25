@@ -119,7 +119,7 @@ STYLE_FEATURE_NAMES = [
 
 class StyleFeatures(BaseEstimator, TransformerMixin):
     """
-    Computes 9 hand-crafted stylometric features per document.
+    Computes 6 hand-crafted stylometric features per document.
     Fit is a no-op (no data-dependent state needed).
     """
 
@@ -232,8 +232,8 @@ def _bigram_entropy(tokens: List[int]) -> tuple:
 
 class ExtendedStyleFeatures(BaseEstimator, TransformerMixin):
     """
-    22 stylometric features = 9 base StyleFeatures +
-    13 extended features (bigram entropy, positional, freq-concentration).
+    18 stylometric features = 6 base StyleFeatures +
+    12 extended features (bigram entropy, positional, freq-concentration).
 
     Fit is a no-op (no data-dependent state).
     For the bonus mark controlled study: compare CombinedFeatures (BL3 baseline)
@@ -358,3 +358,97 @@ class GenerativeCombinedFeatures(BaseEstimator, TransformerMixin):
         style_X = self.style.fit_transform(texts, y)
         gen_X = self.gen.fit_transform(texts, y)
         return sp.hstack([tfidf_X, sp.csr_matrix(style_X), sp.csr_matrix(gen_X)], format="csr")
+
+# ---------------------------------------------------------------------------
+# 7. Heaps' Law Feature
+# ---------------------------------------------------------------------------
+
+def heaps_exponent(tokens: List[int]) -> float:
+    """Vocabulary-growth exponent (Heaps' Law)."""
+    n = len(tokens)
+    if n < 10:
+        return 0.0
+    seen = set()
+    growth = []
+    for i, t in enumerate(tokens, 1):
+        seen.add(t)
+        if i % max(1, n // 20) == 0:  # sample ~20 points along the sequence
+            growth.append((i, len(seen)))
+    if len(growth) < 3:
+        return 0.0
+    log_pos = np.log([g[0] for g in growth])
+    log_vocab = np.log([g[1] for g in growth])
+    beta, _ = np.polyfit(log_pos, log_vocab, 1)
+    return beta
+
+
+class HeapsLawFeatures(BaseEstimator, TransformerMixin):
+    """
+    Extracts the Heaps' law exponent (beta).
+    Fit is a no-op (no data-dependent state needed).
+    """
+
+    def fit(self, texts: List[List[int]], y=None):
+        return self
+
+    def transform(self, texts: List[List[int]]) -> np.ndarray:
+        heaps = np.zeros((len(texts), 1), dtype=np.float32)
+        for i, tokens in enumerate(texts):
+            heaps[i, 0] = heaps_exponent(tokens)
+        return heaps
+
+    def fit_transform(self, texts: List[List[int]], y=None) -> np.ndarray:
+        return self.transform(texts)
+
+
+# ---------------------------------------------------------------------------
+# 8. Champion combined features
+# ---------------------------------------------------------------------------
+
+class ChampionFeatures(BaseEstimator, TransformerMixin):
+    """
+    Horizontally stacks sparse TF-IDF (150k), dense ExtendedStyle (18),
+    GenerativeStyle (8), and HeapsLawFeatures (1). Total = 150,027 features.
+    """
+
+    def __init__(self, ngram_range=(1, 3), max_features=150_000, sublinear_tf=True):
+        self.tfidf = TfidfFeatures(
+            ngram_range=ngram_range,
+            max_features=max_features,
+            sublinear_tf=sublinear_tf,
+        )
+        self.style = ExtendedStyleFeatures()
+        self.gen = GenerativeStyleFeatures(alpha=0.1, use_trigram=True, vocab_size=18438)
+        self.heaps = HeapsLawFeatures()
+
+    def fit(self, texts: List[List[int]], y=None):
+        self.tfidf.fit(texts)
+        self.style.fit(texts)
+        self.gen.fit(texts, y)
+        self.heaps.fit(texts, y)
+        return self
+
+    def transform(self, texts: List[List[int]]):
+        tfidf_X = self.tfidf.transform(texts)
+        style_X = self.style.transform(texts)
+        gen_X = self.gen.transform(texts)
+        heaps_X = self.heaps.transform(texts)
+        return sp.hstack([
+            tfidf_X, 
+            sp.csr_matrix(style_X), 
+            sp.csr_matrix(gen_X),
+            sp.csr_matrix(heaps_X)
+        ], format="csr")
+
+    def fit_transform(self, texts: List[List[int]], y=None):
+        tfidf_X = self.tfidf.fit_transform(texts, y)
+        style_X = self.style.fit_transform(texts, y)
+        gen_X = self.gen.fit_transform(texts, y)
+        heaps_X = self.heaps.fit_transform(texts, y)
+        return sp.hstack([
+            tfidf_X, 
+            sp.csr_matrix(style_X), 
+            sp.csr_matrix(gen_X),
+            sp.csr_matrix(heaps_X)
+        ], format="csr")
+
