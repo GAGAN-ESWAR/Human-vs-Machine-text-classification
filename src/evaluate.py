@@ -33,8 +33,8 @@ N_SPLITS = 5
 RANDOM_STATE = 42
 
 
-def _make_kfold() -> StratifiedKFold:
-    return StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
+def _make_kfold(random_state: int = 42) -> StratifiedKFold:
+    return StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=random_state)
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +48,7 @@ def cv_evaluate(
     y: np.ndarray,
     verbose: bool = True,
     model_name: str = "model",
+    random_state: int = 42,
 ) -> Tuple[dict, np.ndarray]:
     """
     Run 5-fold stratified CV.
@@ -60,13 +61,14 @@ def cv_evaluate(
     y               : integer labels (0/1)
     verbose         : print fold-by-fold results
     model_name      : string used in logging
+    random_state    : seed for StratifiedKFold
 
     Returns
     -------
     results : dict with mean/std of all metrics
     oof_probs : np.ndarray of shape (N,) — OOF probability of class 1
     """
-    kf = _make_kfold()
+    kf = _make_kfold(random_state)
     texts_arr = np.array(texts, dtype=object)
 
     oof_probs = np.zeros(len(y), dtype=np.float32)
