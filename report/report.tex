@@ -69,7 +69,7 @@ Several alternative hypotheses were evaluated using the leak-free protocol and e
 
 \textbf{Shape Statistics:} We hypothesized that token-shape or statistical characteristics might contain information not captured by token identity and n-gram frequency. However, this addition yielded a leak-free CV of 94.12\%, which did not exceed the 94.38\% empirical hurdle. The feature family was therefore not retained.
 
-\textbf{Pseudo-labeling:} To test semi-supervised generalization, a configuration incorporating pseudo-labeling on high-confidence test predictions was evaluated. While it achieved a highly optimistic local CV accuracy of $\sim$95.00\%, its public leaderboard score dropped to 94.86\%. The discrepancy between local validation and public leaderboard performance is consistent with a possible self-reinforcing effect from pseudo-label errors, indicating that higher local validation performance did not necessarily translate into better public leaderboard performance.
+\textbf{Pseudo-labeling:} To test semi-supervised generalization, Phase 4 incorporated pseudo-labeling using high-confidence test predictions. Under the leak-free evaluation protocol, Phase 4 achieved 94.58\% CV accuracy and an AUC of 98.48\%. This CV accuracy exceeded the project's 94.38\% empirical hurdle by 0.20 percentage points. Its corresponding public leaderboard submission achieved 95.53\% accuracy. The experiment was recorded in \texttt{EXPERIMENT\_LOG.md} on September 25, 2026, with the corresponding submission file \texttt{submission\_Phase4-PseudoLabeling\_20260925\_221137.csv}.
 
 \textbf{Similarity-Augmented Champion:} To investigate near-duplicate sequences, we added one dense feature capturing the maximum TF-IDF cosine similarity of each document to the training set. This configuration scored 95.93\% on the public leaderboard.
 
@@ -87,7 +87,7 @@ Several alternative hypotheses were evaluated using the leak-free protocol and e
 \hline
 Original Champion & 150,027 & 94.16\% & 95.66\% \\
 Champion + Shape Statistics & 150,027 + Shape & 94.12\% & --- \\
-Champion + Pseudo-labeling & 150,027 + Pseudo & $\sim$95.00\% & 94.86\% \\
+Phase 4 Pseudo-labeling & 150,027 + Pseudo & 94.58\% & 95.53\% \\
 Phase B LGBM + LR + Similarity & 150,028 & 94.43\% & 96.06\% \\
 Phase 3 LGBM + Shallow LGBM & 150,028 & 94.46\% & 96.06\% \\
 \hline
