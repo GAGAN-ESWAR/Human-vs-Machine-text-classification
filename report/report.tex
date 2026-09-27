@@ -33,7 +33,7 @@ To capture complementary signals from the integer sequences, four groups of feat
     \setlength{\parskip}{0pt}
     \setlength{\parsep}{0pt}
     \item \textbf{TF-IDF Representation (150,000 features):} Sublinear-scaled TF-IDF n-grams (1--3 grams). Designed to capture token-specific frequency and local sequence patterns.
-    \item \textbf{Stylometric Features (18 features):} Includes document length, unique-token counts, and token entropy. Expected to capture broader document-composition characteristics independently of individual token identities.
+    \item \textbf{Stylometric Features (18 features):} Includes document length, unique-token counts, and token entropy. Designed to capture broader document-composition characteristics beyond individual n-gram frequencies.
     \item \textbf{Generative Markov Features (8 features):} Class-conditional sequence transition log-likelihoods. A dictionary-based mapping strategy was used for memory-efficient computation over the large vocabulary. This provides a compact summary of class-conditional transition behavior.
     \item \textbf{Heaps' Law (1 feature):} A vocabulary-growth exponent, capturing the rate of vocabulary growth with document length.
 \end{itemize}
@@ -41,7 +41,7 @@ To capture complementary signals from the integer sequences, four groups of feat
 LightGBM formed the main base learner because the experimental pipeline could combine the sparse TF-IDF representation with dense engineered features while allowing nonlinear interactions among heterogeneous feature groups. Logistic Regression and a second shallow LightGBM were used in the two ensemble variants.
 
 \section{Validation and Leakage}
-Early modeling established an early TF-IDF + stylometric baseline of 89.82\% CV. Adding generative features substantially improved local performance to over 94\%. However, investigation identified data leakage: TF-IDF vocabulary construction and generative feature fitting had been performed globally before fold splitting. Therefore, validation folds improperly influenced feature construction, causing optimistic estimates.
+Early modeling established a TF-IDF + stylometric baseline of 89.82\% CV. Adding generative features substantially improved local performance to over 94\%. However, investigation identified data leakage: TF-IDF vocabulary construction and generative feature fitting had been performed globally before fold splitting. Therefore, validation folds improperly influenced feature construction, causing optimistic estimates.
 
 The pipeline was corrected. Every feature transformation was fitted exclusively on the training fold and then applied to the validation fold, and subsequent evaluation used this leak-free protocol.
 
@@ -69,7 +69,7 @@ Several alternative hypotheses were evaluated using the leak-free protocol and e
 
 \textbf{Shape Statistics:} We hypothesized that token-shape or statistical characteristics might contain information not captured by token identity and n-gram frequency. However, this addition yielded a leak-free CV of 94.12\%, which did not exceed the 94.38\% empirical hurdle. The feature family was therefore not retained.
 
-\textbf{Pseudo-labeling:} To test semi-supervised generalization, Phase 4 incorporated pseudo-labeling using high-confidence test predictions. Under the leak-free evaluation protocol, Phase 4 achieved 94.58\% CV accuracy and an AUC of 98.48\%. This CV accuracy exceeded the project's 94.38\% empirical hurdle by 0.20 percentage points. Its corresponding public leaderboard submission achieved 95.53\% accuracy. The experiment was recorded in \texttt{EXPERIMENT\_LOG.md} on September 25, 2026, with the corresponding submission file \texttt{submission\_Phase4-PseudoLabeling\_20260925\_221137.csv}.
+\textbf{Pseudo-labeling:} To test semi-supervised generalization, Phase 4 incorporated pseudo-labeling using high-confidence test predictions. Under the leak-free evaluation protocol, Phase 4 achieved 94.58\% CV accuracy and an AUC of 98.48\%. This CV accuracy exceeded the project's 94.38\% empirical hurdle by 0.20 percentage points. Its corresponding public leaderboard submission achieved 95.53\% accuracy.
 
 \textbf{Similarity-Augmented Champion:} To investigate near-duplicate sequences, we added one dense feature capturing the maximum TF-IDF cosine similarity of each document to the training set. This configuration scored 95.93\% on the public leaderboard.
 
@@ -87,7 +87,7 @@ Several alternative hypotheses were evaluated using the leak-free protocol and e
 \hline
 Original Champion & 150,027 & 94.16\% & 95.66\% \\
 Champion + Shape Statistics & 150,027 + Shape & 94.12\% & --- \\
-Phase 4 Pseudo-labeling & 150,027 + Pseudo & 94.58\% & 95.53\% \\
+Phase 4 Pseudo-labeling & 150,027 + pseudo-labels & 94.58\% & 95.53\% \\
 Phase B LGBM + LR + Similarity & 150,028 & 94.43\% & 96.06\% \\
 Phase 3 LGBM + Shallow LGBM & 150,028 & 94.46\% & 96.06\% \\
 \hline
@@ -102,9 +102,9 @@ TF-IDF n-grams preserve token identity and local sequence patterns. Markov likel
 Limitations include a restricted hypothesis space and the fact that public leaderboard feedback inherently creates model-selection bias risk. The empirical 94.38\% hurdle is a pragmatic project-specific threshold, not a formal measure of statistical significance. The token mapping is unavailable, limiting semantic interpretation, and the fixed dataset limits claims about transfer to other sources or unseen generation systems. Finally, the 150k-dimensional sparse representation increases computational requirements.
 
 \section{Conclusion}
-This project engineered a 150,027-dimensional representation, and subsequently a 150,028-feature similarity-augmented representation, to classify obfuscated token sequences. Two final ensemble configurations (Phase B and Phase 3) achieved the same highest observed public leaderboard accuracy of 96.06\%. The small 0.03 percentage-point difference in cross-validation accuracy between them (94.46\% vs 94.43\%) does not establish that one is universally superior. More importantly, correcting early data leakage led to a robust fold-isolated, multi-seed evaluation protocol. This framework provided an empirical criterion for assessing features and demonstrated that higher local validation performance does not necessarily translate into better public leaderboard generalization. Capacity ablation showed that reducing capacity did not improve validation performance in the tested reduced-feature setup.
+This project engineered a 150,027-dimensional representation, and subsequently a 150,028-feature similarity-augmented representation, to classify obfuscated token sequences. Two final ensemble configurations (Phase B and Phase 3) achieved the same highest observed public leaderboard accuracy of 96.06\%. The small 0.03 percentage-point difference in cross-validation accuracy between them (94.46\% vs 94.43\%) does not establish that one is universally superior. More importantly, correcting early data leakage led to a fold-isolated, multi-seed evaluation protocol. This framework provided an empirical criterion for assessing features and demonstrated that higher local validation performance does not necessarily translate into higher public leaderboard performance. Capacity ablation showed that reducing capacity did not improve validation performance in the tested reduced-feature setup.
 
 \section*{AI Usage}
-AI tools were used during the project to assist with code development, debugging, feature-engineering exploration, experiment interpretation, and report drafting. Experimental results reported in this document were taken from the project experiments and were not fabricated by the AI tools.
+AI tools were used during the project to assist with code development, debugging, feature-engineering exploration, experiment interpretation, and report drafting. The experimental results reported here are based on the project's recorded experiment outputs.
 
 \end{document}
